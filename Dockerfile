@@ -1,4 +1,4 @@
-FROM nvcr.io/nvidia/cudagl:10.2-runtime-ubuntu18.04
+ FROM nvcr.io/nvidia/cudagl:10.2-runtime-ubuntu18.04
 
 USER root
 
@@ -7,7 +7,7 @@ USER root
 ENV \
     SHELL="/bin/bash" \
     HOME="/home"  \
-    NB_USER="jovyan" \
+    NB_USER="root" \
     USER_GID=0 \
     XDG_CACHE_HOME="/home/.cache/" \
     XDG_RUNTIME_DIR="/tmp" \
@@ -247,7 +247,7 @@ ENV \
     PYTHON_VERSION="3.7.8" \
     CONDA_PYTHON_DIR=/opt/conda/lib/python3.7
 
-RUN CONDA_VERSION="4.8.4" && \
+RUN CONDA_VERSION="py37_4.8.3" && \
     wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-${CONDA_VERSION}-Linux-x86_64.sh -O ~/miniconda.sh && \
     /bin/bash ~/miniconda.sh -b -p $CONDA_DIR && \
     export PATH=$CONDA_DIR/bin:$PATH && \
@@ -561,7 +561,7 @@ RUN \
             Pillow \
             'ipython=7.12.*' \
             'notebook=6.1.*' \
-            'jupyterlab=2.2.*' \
+            'jupyterlab=1.2.*' \
             # Selected by library evaluation
             networkx \
             click \
