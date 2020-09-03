@@ -1,9 +1,10 @@
- FROM nvcr.io/nvidia/cudagl:10.2-runtime-ubuntu18.04
+FROM nvcr.io/nvidia/cudagl:10.2-runtime-ubuntu18.04
 
 USER root
 
-### BASICS ###
-# Technical Environment Variables
+# Setup #
+
+# Environment Variables
 ENV \
     SHELL="/bin/bash" \
     HOME="/home"  \
@@ -20,7 +21,7 @@ ENV \
 
 WORKDIR $HOME
 
-# Make folders
+# create folders
 RUN \
     mkdir $RESOURCES_PATH && chmod a+rwx $RESOURCES_PATH && \
     mkdir $WORKSPACE_HOME && chmod a+rwx $WORKSPACE_HOME && \
@@ -31,7 +32,7 @@ COPY resources/scripts/clean-layer.sh  /usr/bin/clean-layer.sh
 COPY resources/scripts/fix-permissions.sh  /usr/bin/fix-permissions.sh
 
  # Make clean-layer and fix-permissions executable
- RUN \
+RUN \
     chmod a+rwx /usr/bin/clean-layer.sh && \
     chmod a+rwx /usr/bin/fix-permissions.sh
 
@@ -45,24 +46,21 @@ RUN \
     locale-gen && \
     dpkg-reconfigure --frontend=noninteractive locales && \
     update-locale LANG=en_US.UTF-8 && \
-    # Cleanup
+    # Clean
     clean-layer.sh
 
 ENV LC_ALL="en_US.UTF-8" \
     LANG="en_US.UTF-8" \
     LANGUAGE="en_US:en"
 
-# Install basics
+# Install basic linux depends
 RUN \
-    # TODO add repos?
-    # add-apt-repository ppa:apt-fast/stable
-    # add-apt-repository 'deb http://security.ubuntu.com/ubuntu xenial-security main'
     apt-get update --fix-missing && \
     apt-get install -y sudo apt-utils && \
     apt-get upgrade -y && \
     apt-get update && \
     apt-get install -y --no-install-recommends \
-        # This is necessary for apt to access HTTPS sources: 
+        # for apt to access HTTPS sources: 
         apt-transport-https \
         gnupg-agent \
         gpg-agent \
@@ -366,6 +364,7 @@ RUN \
 ### END PROCESS TOOLS ###
 
 ### GUI TOOLS ###
+
 # Install VNC
 RUN \
     apt-get update  && \
@@ -561,7 +560,7 @@ RUN \
             Pillow \
             'ipython=7.12.*' \
             'notebook=6.1.*' \
-            'jupyterlab=1.2.*' \
+            'jupyterlab=2.2.5' \
             # Selected by library evaluation
             networkx \
             click \
@@ -864,6 +863,35 @@ RUN \
     # Cleanup
     clean-layer.sh
 
+
+# Install a few dependencies for iCommands, text editing, and monitoring instances
+RUN apt-get update && apt-get install -y \
+    libfuse2 \
+    libpq-dev \
+    libssl1.0 \
+    lsb 
+
+# Install iCommands
+RUN wget https://files.renci.org/pub/irods/releases/4.1.10/ubuntu14/irods-icommands-4.1.10-ubuntu14-x86_64.deb && dpkg -i *.deb  
+COPY irods_environment.json /root/.irods/irods_environment.json
+
+# Install VirtualGL 
+RUN cd /tmp && wget https://sourceforge.net/projects/virtualgl/files/2.6.3/virtualgl_2.6.3_amd64.deb/download -O virtualgl_2.6.3_amd64.deb && \
+    dpkg -i --force-depends virtualgl_2.6.3_amd64.deb && \
+    apt-get -f install && \
+    rm -rf /tmp/*.deb
+
+ENV PATH=$PATH:/opt/VirtualGL/bin/
+
+# install XPRA: https://xpra.org/trac/wiki/Usage/Docker
+RUN apt-get update && \
+    wget -O - http://winswitch.org/gpg.asc | apt-key add - && \
+    echo "deb http://winswitch.org/ bionic main" > /etc/apt/sources.list.d/xpra.list && \
+    apt-get update && \
+    apt-get install -y xpra xvfb && \
+    apt-get clean && \ 
+    rm -rf /var/lib/apt/lists/*
+
 ### END INCUBATION ZONE ###
 
 ### CONFIGURATION ###
@@ -1052,7 +1080,7 @@ LABEL \
     "io.k8s.description"="All-in-one web-based development environment for machine learning." \
     "io.k8s.display-name"="CyVerse Workspace" \
     # Openshift labels: https://docs.okd.io/latest/creating_images/metadata.html
-    "io.openshift.expose-services"="8080:http, 5901:xvnc" \
+    "io.openshift.expose-services"="8080:http, 5901:xvnc, 9876:xpra," \
     "io.openshift.non-scalable"="true" \
     "io.openshift.tags"="workspace, machine learning, vnc, ubuntu, xfce" \
     "io.openshift.min-memory"="1Gi" \
@@ -1094,6 +1122,7 @@ CMD ["python", "/resources/docker-entrypoint.py"]
 
 # Port 8080 is the main access port (also includes SSH)
 # Port 5091 is the VNC port
+# Port 9876 is the XPRA port
 # Port 3389 is the RDP port
 # Port 8090 is the Jupyter Notebook Server
 # See supervisor.conf for more ports
