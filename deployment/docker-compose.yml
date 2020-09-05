@@ -1,0 +1,13 @@
+version: '3.2'
+
+services:
+  workspace:
+    image: tswetnam/workspace-minimal
+    restart: always
+    volumes:
+      - workspace:/workspace
+    ports:
+      - 8080:8080
+
+volumes:
+  ml-workspace:
