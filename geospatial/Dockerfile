@@ -66,6 +66,41 @@ RUN echo "deb https://s3.amazonaws.com/repo.deb.cyberduck.io stable main" | tee 
 RUN apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
+# Install GRASS-GIS
+
+RUN apt-get update && sudo apt-get upgrade -y
+
+# install PROJ
+RUN apt-get install libproj-dev proj-data proj-bin -y
+
+# optionally, install (selected) datum grid files
+
+RUN cd /tmp && \
+    wget https://download.osgeo.org/proj/proj-datumgrid-world-latest.zip && \
+    wget https://download.osgeo.org/proj/proj-datumgrid-oceania-latest.zip && \
+    wget https://download.osgeo.org/proj/proj-datumgrid-north-america-latest.zip && \
+    wget https://download.osgeo.org/proj/proj-datumgrid-europe-latest.zip && \
+    cd /usr/share/proj/ && \
+    for datumfile in $(ls /tmp/proj-datumgrid-*-latest.zip) ; do ** \
+    unzip $datumfile && rm -f $datumfile ** \
+    done
+
+# install GEOS
+RUN apt-get install libgeos-dev -y
+
+# install GDAL
+RUN apt-get install libgdal-dev python3-gdal gdal-bin -y
+
+# install PDAL (optional)
+RUN apt-get install libpdal-dev pdal libpdal-plugin-python -y
+
+# recommended to give Python3 precedence over Python2 (which is end-of-life since 2019)
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1
+
+# install SAGA-GIS
+
+RUN apt update && apt-get install -y saga
+
 # Install QGIS
 
 RUN apt update && apt install -y gnupg software-properties-common && \

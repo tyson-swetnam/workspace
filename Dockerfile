@@ -178,7 +178,7 @@ RUN \
     clean-layer.sh
 
 # Add tini
-RUN wget --quiet https://github.com/krallin/tini/releases/download/v0.18.0/tini -O /tini && \
+RUN wget --quiet https://github.com/krallin/tini/releases/download/v0.19.0/tini -O /tini && \
     chmod +x /tini
 
 # prepare ssh for inter-container communication for remote python kernel
