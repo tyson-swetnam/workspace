@@ -66,46 +66,111 @@ RUN echo "deb https://s3.amazonaws.com/repo.deb.cyberduck.io stable main" | tee 
 RUN apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Install GRASS-GIS
+# Compile GRASS-GIS before QGIS
 
-RUN apt-get update && sudo apt-get upgrade -y
+# data directory - not using the base images volume because then the permissions cannot be adapted
+ENV DATA_DIR /data
 
-# install PROJ
-RUN apt-get install libproj-dev proj-data proj-bin -y
+# GRASS GIS compile dependencies
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends --no-install-suggests \
+        build-essential \
+        libblas-dev \
+        libbz2-dev \
+        libcairo2-dev \
+        libfftw3-dev \
+        libfreetype6-dev \
+        libgdal-dev \
+        libgeos-dev \
+        libglu1-mesa-dev \
+        libgsl0-dev \
+        libjpeg-dev \
+        liblapack-dev \
+        libncurses5-dev \
+        libnetcdf-dev \
+        libopenjp2-7 \
+        libopenjp2-7-dev \
+        libpdal-dev pdal \
+        libpdal-plugin-python \
+        libpng-dev \
+        libpq-dev \
+        libproj-dev \
+        libreadline-dev \
+        libsqlite3-dev \
+        libtiff-dev \
+        libxmu-dev \
+        libzstd-dev \
+        bison \
+        flex \
+        g++ \
+        gettext \
+        gdal-bin \
+        language-pack-en-base \
+        libfftw3-bin \
+        make \
+        ncurses-bin \
+        netcdf-bin \
+        proj-bin \
+        proj-data \
+        python3 \
+        python3-dateutil \
+        python3-dev \
+        python3-numpy \
+        python3-pil \
+        python3-pip \
+        python3-ply \
+        python3-six \
+        python3-wxgtk4.0 \
+        python3-gdal \
+        python3-matplotlib \
+        sqlite3 \
+        subversion \
+        unixodbc-dev \
+        zlib1g-dev \
+    && apt-get autoremove \
+    && apt-get clean && \
+    mkdir -p $DATA_DIR
 
-# optionally, install (selected) datum grid files
+RUN echo LANG="en_US.UTF-8" > /etc/default/locale
+ENV LANG C.UTF-8
+ENV LC_ALL C.UTF-8
 
-RUN cd /tmp && \
-    wget https://download.osgeo.org/proj/proj-datumgrid-world-latest.zip && \
-    wget https://download.osgeo.org/proj/proj-datumgrid-oceania-latest.zip && \
-    wget https://download.osgeo.org/proj/proj-datumgrid-north-america-latest.zip && \
-    wget https://download.osgeo.org/proj/proj-datumgrid-europe-latest.zip && \
-    cd /usr/share/proj/ && \
-    for datumfile in $(ls /tmp/proj-datumgrid-*-latest.zip) ; do ** \
-    unzip $datumfile && rm -f $datumfile ** \
-    done
+# Pull binary
 
-# install GEOS
-RUN apt-get install libgeos-dev -y
+RUN add-apt-repository ppa:ubuntugis/ubuntugis-unstable
+RUN add-apt-repository ppa:grass/grass-devel
+RUN apt-get update 
+RUN apt-get install grass
 
-# install GDAL
-RUN apt-get install libgdal-dev python3-gdal gdal-bin -y
+# enable simple grass command regardless of version number
+RUN ln -s /usr/local/bin/grass* /usr/local/bin/grass
 
-# install PDAL (optional)
-RUN apt-get install libpdal-dev pdal libpdal-plugin-python -y
+# Reduce the image size
+RUN apt-get autoremove -y
+RUN apt-get clean -y
 
-# recommended to give Python3 precedence over Python2 (which is end-of-life since 2019)
-RUN update-alternatives --install /usr/bin/python python /usr/bin/python3 1
+# set SHELL var to avoid /bin/sh fallback in interactive GRASS GIS sessions in docker
+ENV SHELL /bin/bash
 
-# install SAGA-GIS
+# Fix permissions
+RUN chmod -R a+rwx $DATA_DIR
 
-RUN apt update && apt-get install -y saga
+# declare data volume late so permissions apply
+VOLUME $DATA_DIR
+WORKDIR $DATA_DIR
+
+# Further reduce the docker image size 
+RUN rm -rf /code/grass
+
+# Conda install wxpython required for GRASS GUI
+RUN conda install -c anaconda wxpython
 
 # Install QGIS
 
-RUN apt update && apt install -y gnupg software-properties-common && \
+RUN apt-get update && apt-get install -y gnupg software-properties-common && \
     wget -qO - https://qgis.org/downloads/qgis-2020.gpg.key | gpg --no-default-keyring --keyring gnupg-ring:/etc/apt/trusted.gpg.d/qgis-archive.gpg --import && \
     chmod a+r /etc/apt/trusted.gpg.d/qgis-archive.gpg && \
-    add-apt-repository "deb https://qgis.org/debian `lsb_release -c -s` main" && \
-    apt update && apt install qgis qgis-plugin-grass
+    add-apt-repository "deb https://qgis.org/ubuntugis `lsb_release -c -s` main" 
+
+RUN apt-get update && apt-get install -y qgis qgis-plugin-grass saga
 
