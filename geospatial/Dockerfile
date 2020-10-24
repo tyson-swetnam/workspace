@@ -74,3 +74,5 @@ RUN apt update && apt install -y gnupg software-properties-common && \
     add-apt-repository "deb https://qgis.org/debian `lsb_release -c -s` main" && \
     apt update && apt install qgis qgis-plugin-grass
 
+# set environment for PDAL & GDAL
+ENV PROJ_LIB=/opt/conda/share/proj/
